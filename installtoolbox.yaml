@@ -1,0 +1,51 @@
+- name: Install toolbox - Docker, K8s, Minikube, Helm
+  hosts:
+    - target
+  become: yes
+  
+  tasks:
+    - name: Install Docker
+      ansible.builtin.package:
+        name: docker.io
+        state: present
+
+    - name: Docker - run and enable
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: yes
+    
+    - name: Download kubernetes
+      command: "curl -LO https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+      args: 
+        creates: "/usr/local/bin/kubectl"
+
+    - name: Install Kubernetes
+      ansible.builtin.copy:
+        src: 'kubectl'
+        dest: '/usr/local/bin/kubectl'
+        owner: 'root'
+        group: 'root'
+        mode: '0755'
+      become: true
+
+    - name: Install Minikube binary
+      ansible.builtin.get_url:
+        url: https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        dest: /usr/local/bin/minikube
+        mode: u+x
+
+    - name: Download Helm script
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        dest: /tmp/get_helm.sh
+        mode: '0755'
+
+    - name: Make Helm script executable
+      ansible.builtin.file:
+        path: /tmp/get_helm.sh
+        mode: '0755'
+
+    - name: Install Helm
+      ansible.builtin.command:
+        cmd: /tmp/get_helm.sh

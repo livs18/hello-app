@@ -1,0 +1,46 @@
+---
+- name: Build Docker image, push to Docker Hub, start Minikube, and deploy Kubernetes resources
+  hosts: localhost
+  tasks:
+    - name: Build Docker image
+      ansible.builtin.command:
+          cmd: docker build -t hello-orange .
+
+    - name: Tag Docker image to Docker Hub
+      ansible.builtin.command:
+        cmd: docker tag hello-orange livsv/hello-orange:v1.0
+
+    - name: Push Docker image to Docker Hub
+      ansible.builtin.command:
+        cmd: docker push livsv/hello-orange:v1.0
+
+    - name: Required rule for starting minikube
+      ansible.builtin.command:
+        cmd: sysctl fs.protected_regular=0
+      become: yes
+
+    - name: Start Minikube
+      ansible.builtin.command:
+        cmd: minikube start --force
+      become: yes
+
+    - name: Apply Kubernetes service
+      ansible.builtin.command:
+        cmd: kubectl apply -f service.yaml
+
+    - name: Apply Kubernetes deployment
+      ansible.builtin.command:
+        cmd: kubectl apply -f deployment.yaml
+    
+    - name: Get node info
+      shell: kubectl get -o wide node | grep -v NAME
+      register: node_info
+
+    - name: Set internal IP variable
+      set_fact:
+        kubernetes_internal_ip: "{{ node_info.stdout_lines[0].split()[5] }}"
+      when: node_info.stdout_lines | length > 0
+
+    - name: Internal IP and Port Information
+      debug:
+        msg: "For testing: {{ kubernetes_internal_ip }}:30001"
